@@ -1,0 +1,98 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Digit Recognizer</title>
+    <link rel="icon" type="image/png" href="https://cdn-icons-png.flaticon.com/256/2875/2875404.png">
+    <link rel="stylesheet" href="{% static 'css/styles.css' %}">
+    <script>
+        function generateImages() {
+            fetch('/generate-images/')
+                .then(response => response.json())
+                .then(data => {
+                    const gridContainer = document.querySelector('.grid-images');
+                    gridContainer.innerHTML = '';
+                    data.images.forEach(imageData => {
+                        const imgContainer = document.createElement('div');
+                        imgContainer.className = 'img';
+                        imgContainer.innerHTML = `<img src="data:image/png;base64,${imageData.image}" onclick="predict(this)" />`;
+                        gridContainer.appendChild(imgContainer);
+                    });
+                })
+                .catch(error => console.error('Error generating images:', error));
+        }
+
+        function predict(imgElement) {
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            const img = new Image();
+            img.src = imgElement.src;
+
+            img.onload = () => {
+                canvas.width = 28;
+                canvas.height = 28;
+                ctx.drawImage(img, 0, 0, 28, 28);
+
+                canvas.toBlob((blob) => {
+                    const formData = new FormData();
+                    formData.append('file', blob, 'image.png');
+
+                    fetch('/predict-digit/', {
+                        method: 'POST',
+                        body: formData
+                    })
+                        .then(response => response.json())
+                        .then(data => {
+                            const headingElement = document.querySelector('.heading');
+                            if (headingElement) {
+                                headingElement.style.display = 'none';
+                            }
+                            const headingContainer = document.querySelector('.heading-content');
+                            headingContainer.innerHTML = '';
+                            const description = document.createElement('p');
+                            description.className = 'predicted-no';
+                            description.innerText = 'Predicted Number';
+                            const number = document.createElement('p');
+                            number.className = 'number';
+                            number.innerText = data.prediction;
+                            headingContainer.appendChild(description);
+                            headingContainer.appendChild(number);
+                        })
+                        .catch(error => console.error('Error predicting digit:', error));
+                }, 'image/png');
+            };
+        }
+
+        document.addEventListener('DOMContentLoaded', function () {
+            generateImages();
+        });
+    </script>
+</head>
+
+<body>
+    <div class="container">
+        <div class="heading-section">
+            <div class="heading-content">
+                <p class="heading">Tap Any Image To Predict Number</p>
+            </div>
+        </div>
+        <div class="control-section">
+            <div class="label">
+                <h4>Numbers</h4>
+                <div class="generate-container" onclick="generateImages()">
+                    <img class="g-img" src="https://cdn-icons-png.flaticon.com/256/2875/2875404.png"
+                        alt="Generate Icon" />
+                    <p class="generate">enerate</p>
+                </div>
+            </div>
+            <div class="grid-images">
+                <!-- Random images will be injected here dynamically -->
+            </div>
+        </div>
+    </div>
+</body>
+
+</html>
